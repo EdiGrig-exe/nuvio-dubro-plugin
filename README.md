@@ -143,6 +143,40 @@ O sursă căzută e logată și nu le afectează pe celelalte.
 > disponibilă: endpoint-urile răspund 404, iar domeniul API-ului de căutare nu mai există.
 > Detalii în [NOTES.md](NOTES.md#8-căutarea-torbox-verificat-2026-10-12-nu-e-utilizabilă).
 
+### Sursa recomandată: FileList (worker Cloudflare)
+
+Trackerele publice (ex. Torrentio) n-au aproape deloc release-uri dublate în română. FileList
+are o categorie dedicată, **RO Dubbed**, dar API-ul lui dă doar fișierul `.torrent`, iar Nuvio
+primește răspunsurile ca text și nu poate calcula hash-ul pe telefon. De aceea există
+[worker/](worker/): un Cloudflare Worker gratuit care caută pe FileList după IMDb (categoria 28),
+calculează hash-urile și răspunde ca un addon Stremio. **RoDub nu are nevoie de cod nou:**
+URL-ul worker-ului se pune în câmpul „URL sursă”.
+
+- Username-ul și passkey-ul FileList sunt **secrete Cloudflare**: nu stau în repo, nici pe telefon.
+- Worker-ul răspunde doar cu token-ul secret din URL (`/<token>/stream/...`); altfel 404.
+- Hash-urile se memorează permanent în KV, căutările 6 ore: fiecare `.torrent` se descarcă o dată.
+- RoDub adaugă în TorBox doar ce e **deja în cache**, deci TorBox nu contactează FileList cu
+  passkey-ul tău. Verifică totuși regulile FileList privind API-ul și serviciile cloud.
+
+**Deploy (o singură dată):**
+
+```bash
+npx wrangler@4.149.0 login                              # se deschide browserul, contul Cloudflare
+npx wrangler@4.149.0 kv namespace create CACHE --config worker/wrangler.toml
+#   → copiază id-ul afișat în worker/wrangler.toml (secțiunea [[kv_namespaces]], decomentată)
+npx wrangler@4.149.0 secret put FILELIST_USERNAME --config worker/wrangler.toml
+npx wrangler@4.149.0 secret put FILELIST_PASSKEY  --config worker/wrangler.toml
+npx wrangler@4.149.0 secret put ACCESS_TOKEN      --config worker/wrangler.toml   # = WORKER_TOKEN din .env
+npm run worker:deploy                                   # afișează https://rodub-filelist.<cont>.workers.dev
+```
+
+În Nuvio, la **URL sursă**: `https://rodub-filelist.<cont>.workers.dev/<ACCESS_TOKEN>`.
+
+**Local:** `npm run worker:dev` pornește worker-ul pe `http://localhost:8787` cu valorile din
+`.env` (`FILELIST_USERNAME`, `FILELIST_PASSKEY`, `WORKER_TOKEN`), iar
+`SOURCE_URL=http://localhost:8787/<WORKER_TOKEN> node test.js 109445 movie` rulează RoDub
+cap-coadă prin el.
+
 ## Cum funcționează
 
 1. **TMDB:** un singur request aduce titlul englez, titlul original, titlul românesc (traducerea

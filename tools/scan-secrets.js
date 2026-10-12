@@ -36,10 +36,15 @@ function mask(value) {
     return value.length <= 8 ? '***' : `${value.slice(0, 4)}…${value.slice(-2)} (${value.length} caractere)`;
 }
 
+// Un rând poate fi exceptat explicit, cu motiv, prin comentariul „scan-secrets: allow"
+// (ex. id-ul public al unui namespace KV). Folosește-l doar pentru valori care nu sunt secrete.
+const ALLOW_MARKER = /scan-secrets:\s*allow/;
+
 export function scanText(text) {
     const findings = [];
     const lines = String(text).split(/\r?\n/);
     lines.forEach((line, index) => {
+        if (ALLOW_MARKER.test(line)) return;
         for (const rule of RULES) {
             rule.re.lastIndex = 0;
             let m;

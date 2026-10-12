@@ -71,7 +71,10 @@ export default {
         const type = mediaType === 'tv' ? 'series' : 'movie';
         const id = mediaType === 'tv' ? `${imdbId}:${season}:${episode}` : imdbId;
         const { ok, status, data } = await http.json(`${base}/stream/${type}/${id}.json`);
-        if (!ok) throw new Error(`addon-ul a răspuns cu HTTP ${status}`);
+        if (!ok) {
+            const detail = data && typeof data.error === 'string' ? `: ${data.error}` : '';
+            throw new Error(`addon-ul a răspuns cu HTTP ${status}${detail}`);
+        }
         if (!data || !Array.isArray(data.streams)) {
             throw new Error('răspuns invalid: lipsește lista `streams` (URL-ul indică un addon Stremio?)');
         }

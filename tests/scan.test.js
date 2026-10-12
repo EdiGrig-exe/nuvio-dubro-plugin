@@ -23,6 +23,11 @@ test('scanarea prinde formatele de chei TMDB/TorBox și valorile lungi lângă k
     assert.ok(rules(['eyJhbGciOiJIUzI1NiJ9', 'eyJhdWQiOiIxMjM0NTY3ODkwIn0', 'abcdefGHIJ'].join('.')).length > 0);
 });
 
+test('excepția explicită „scan-secrets: allow" sare doar rândul marcat', () => {
+    const text = `id = "${fakeTmdb}" # scan-secrets: allow (id public)\nkey = "${fakeTmdb}"`;
+    assert.deepEqual(scanText(text).map((f) => f.line), [2]);
+});
+
 test('scanarea nu dă alarme false pe info-hash-uri sau pe codul care folosește cheile', () => {
     assert.deepEqual(scanText(`magnet:?xt=urn:btih:${'ab'.repeat(20)}`), []);
     assert.deepEqual(scanText('const url = `requestdl?token=${encodeURIComponent(apiKey)}`;'), []);
