@@ -83,10 +83,10 @@ const get = async (path, e) => {
     return { status: res.status, body: res.status === 200 ? await res.json() : null };
 };
 
-test('manifest: doar resursa catalog, 4 cataloage cu paginare', async () => {
+test('manifest: catalog + meta pentru id-uri tt, 4 cataloage cu paginare', async () => {
     const { status, body } = await get(`/${TOKEN}/kids/manifest.json`, env());
     assert.equal(status, 200);
-    assert.deepEqual(body.resources, ['catalog']);
+    assert.deepEqual(body.resources, ['catalog', { name: 'meta', types: ['movie', 'series'], idPrefixes: ['tt'] }]);
     assert.deepEqual(body.catalogs.map((c) => `${c.type}/${c.id}`), [
         'movie/rodub-dub-movies', 'series/rodub-dub-series', 'movie/rodub-kids-movies', 'series/rodub-kids-series',
     ]);
@@ -180,6 +180,25 @@ test('cron: scheduled rulează o rundă de actualizare', async () => {
         console.log = originalLog;
     }
     assert.equal(Object.keys((await readIndex(e)).titles).length, 4);
+});
+
+test('meta: preluată de la Cinemeta, ca titlurile să se deschidă și fără Cinemeta instalat', async () => {
+    const previous = globalThis.fetch;
+    globalThis.fetch = async (input) => {
+        const url = new URL(String(input));
+        calls.push(url);
+        if (url.hostname === 'v3-cinemeta.strem.io' && url.pathname === '/meta/movie/tt2294629.json') {
+            return json({ meta: { id: 'tt2294629', type: 'movie', name: 'Frozen' } });
+        }
+        if (url.hostname === 'v3-cinemeta.strem.io') return json({ meta: null });
+        return previous(input);
+    };
+    const ok = await get(`/${TOKEN}/kids/meta/movie/tt2294629.json`, env());
+    assert.equal(ok.status, 200);
+    assert.equal(ok.body.meta.name, 'Frozen');
+    assert.equal((await get(`/${TOKEN}/kids/meta/movie/tt0000001.json`, env())).status, 404);
+    assert.equal((await get(`/${TOKEN}/kids/meta/movie/tmdb:123.json`, env())).status, 404);
+    assert.equal((await get('/gresit/kids/meta/movie/tt2294629.json', env())).status, 404);
 });
 
 test('nameFromRelease', () => {

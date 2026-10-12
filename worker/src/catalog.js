@@ -1,6 +1,6 @@
 /**
- * Addon de catalog „RoDub Copii" (doar resursa `catalog`; detaliile vin din Cinemeta,
- * stream-urile din RoDub):
+ * Addon de catalog „RoDub Copii" (resursele `catalog` și `meta`; metadatele sunt preluate de la
+ * Cinemeta, ca titlurile să se deschidă și fără Cinemeta instalat; stream-urile vin din RoDub):
  *
  *   Filme dublate RO / Seriale dublate RO  – titluri din categoria RO Dubbed de pe FileList,
  *       strânse treptat într-un index în KV (cron la 30 min) și îmbogățite cu TMDB (ro-RO).
@@ -11,6 +11,7 @@
 import { FILELIST_API, RO_DUBBED_CATEGORY } from './filelist.js';
 
 const TMDB = 'https://api.themoviedb.org/3';
+const CINEMETA = 'https://v3-cinemeta.strem.io';
 const POSTER = 'https://image.tmdb.org/t/p/w342';
 export const KIDS_GENRES = [16, 10751, 10762];
 
@@ -30,11 +31,12 @@ export const CATALOGS = [
 
 export const KIDS_MANIFEST = {
     id: 'ro.rodub.kids',
-    version: '1.0.0',
+    version: '1.1.0',
     name: 'RoDub Copii',
     description: 'Cataloage pentru copii: titluri dublate în română (FileList) și populare (TMDB).',
-    resources: ['catalog'],
+    resources: ['catalog', { name: 'meta', types: ['movie', 'series'], idPrefixes: ['tt'] }],
     types: ['movie', 'series'],
+    idPrefixes: ['tt'],
     catalogs: CATALOGS.map((c) => Object.assign({}, c, { extra: [{ name: 'skip' }] })),
 };
 
@@ -253,6 +255,17 @@ export async function catalogFor(env, type, id, skip = 0) {
     if (!catalog) return null;
     if (id.startsWith('rodub-dub-')) return dubbedCatalog(env, type, skip);
     return discoverCatalog(env, type, skip);
+}
+
+// Nuvio cere metadatele doar de la addon-urile instalate care declară resursa `meta`; fără ea,
+// titlurile din catalog nu se deschid dacă Cinemeta lipsește. Le preluăm de la Cinemeta
+// (cache la marginea Cloudflare o zi).
+export async function metaFor(type, id) {
+    if ((type !== 'movie' && type !== 'series') || !/^tt\d+$/.test(id)) return null;
+    const res = await fetch(`${CINEMETA}/meta/${type}/${id}.json`, { cf: { cacheTtl: 86400, cacheEverything: true } });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    return data && data.meta ? { meta: data.meta } : null;
 }
 
 // „skip=40" sau „skip=40&genre=x" din segmentul de extra al căii Stremio.

@@ -12,6 +12,7 @@
  * Addon separat de catalog pentru copii (vezi catalog.js):
  *   GET /<ACCESS_TOKEN>/kids/manifest.json
  *   GET /<ACCESS_TOKEN>/kids/catalog/<type>/<id>[/skip=N].json
+ *   GET /<ACCESS_TOKEN>/kids/meta/<type>/<tt…>.json   – metadate (preluate de la Cinemeta)
  *   GET /<ACCESS_TOKEN>/kids/refresh     – o rundă de actualizare a indexului (și din cron)
  *
  * Secrete (wrangler secret put): ACCESS_TOKEN, FILELIST_USERNAME, FILELIST_PASSKEY, TMDB_API_KEY.
@@ -19,7 +20,7 @@
  */
 import { infoHash } from './bencode.js';
 import { FILELIST_API, RO_DUBBED_CATEGORY } from './filelist.js';
-import { KIDS_MANIFEST, catalogFor, parseExtra, refreshIndex } from './catalog.js';
+import { KIDS_MANIFEST, catalogFor, metaFor, parseExtra, refreshIndex } from './catalog.js';
 
 export { FILELIST_API, RO_DUBBED_CATEGORY };
 
@@ -228,6 +229,10 @@ async function handleKids(env, rest) {
     if (rest.length === 1 && rest[0] === 'refresh') {
         if (!env.TMDB_API_KEY) return json({ error: 'worker-ul nu are TMDB_API_KEY configurat' }, 500);
         return json(await refreshIndex(env));
+    }
+    if (rest[0] === 'meta' && rest.length === 3 && rest[2].endsWith('.json')) {
+        const meta = await metaFor(rest[1], decodeURIComponent(rest[2].slice(0, -5)));
+        return meta ? json(meta) : notFound();
     }
     if (rest[0] === 'catalog' && (rest.length === 3 || rest.length === 4) && rest[rest.length - 1].endsWith('.json')) {
         if (!env.TMDB_API_KEY) return json({ error: 'worker-ul nu are TMDB_API_KEY configurat' }, 500);

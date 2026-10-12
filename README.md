@@ -182,7 +182,8 @@ Worker-ul expune și un addon de catalog separat, **RoDub Copii**, cu 4 rânduri
 | Filme pentru copii | TMDB populare: Animation sau Family, rating US cel mult PG |
 | Seriale pentru copii | TMDB populare: genul Kids, fără știri/reality/telenovele/talk-show |
 
-Addon-ul dă doar cataloage: detaliile și căutarea vin din Cinemeta, stream-urile din RoDub.
+Addon-ul dă cataloage și metadate (preluate de la Cinemeta, ca titlurile să se deschidă și fără
+Cinemeta instalat); căutarea vine din Cinemeta, stream-urile din RoDub.
 Indexul titlurilor dublate se construiește treptat (cron la 30 de minute, câteva căutări
 FileList pe rundă, pe ani, sezoane și calități) și se ține în KV. Necesită secretul
 `TMDB_API_KEY` în worker (`npx wrangler@4.149.0 secret put TMDB_API_KEY --config worker/wrangler.toml`).
