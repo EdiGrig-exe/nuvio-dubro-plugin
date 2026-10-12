@@ -1,0 +1,31 @@
+{
+  "publicBaseUrl": "https://edigrig-exe.github.io/nuvio-dubro-plugin",
+  "repository": {
+    "name": "RoDub",
+    "version": "1.0.0",
+    "description": "Filme, seriale și desene animate dublate în limba română, prin TorBox",
+    "author": "EdiGrig-exe"
+  },
+  "scraper": {
+    "id": "rodub",
+    "name": "RoDub 🇷🇴",
+    "description": "Stream-uri dublate în română (filme, seriale, desene animate) din torrente deja cache-uite în TorBox.",
+    "version": "1.0.0",
+    "author": "EdiGrig-exe",
+    "supportedTypes": [
+      "movie",
+      "tv"
+    ],
+    "filename": "rodub.js",
+    "enabled": true,
+    "hasSettings": true,
+    "logo": "",
+    "contentLanguage": [
+      "ro"
+    ],
+    "formats": [
+      "mkv",
+      "mp4"
+    ]
+  }
+}
