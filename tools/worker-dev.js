@@ -37,6 +37,7 @@ const env = {
     ACCESS_TOKEN: fileEnv.WORKER_TOKEN,
     FILELIST_USERNAME: fileEnv.FILELIST_USERNAME,
     FILELIST_PASSKEY: fileEnv.FILELIST_PASSKEY,
+    TMDB_API_KEY: fileEnv.TMDB_API_KEY,
     CACHE: new MemoryKV(),
 };
 

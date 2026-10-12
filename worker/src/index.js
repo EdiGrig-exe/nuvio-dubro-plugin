@@ -9,13 +9,19 @@
  *   GET /<ACCESS_TOKEN>/stream/movie/tt1234567.json
  *   GET /<ACCESS_TOKEN>/stream/series/tt1234567:1:3.json
  *
- * Secrete (wrangler secret put): ACCESS_TOKEN, FILELIST_USERNAME, FILELIST_PASSKEY.
- * KV opțional: CACHE (hash-uri permanent, căutări câteva ore).
+ * Addon separat de catalog pentru copii (vezi catalog.js):
+ *   GET /<ACCESS_TOKEN>/kids/manifest.json
+ *   GET /<ACCESS_TOKEN>/kids/catalog/<type>/<id>[/skip=N].json
+ *   GET /<ACCESS_TOKEN>/kids/refresh     – o rundă de actualizare a indexului (și din cron)
+ *
+ * Secrete (wrangler secret put): ACCESS_TOKEN, FILELIST_USERNAME, FILELIST_PASSKEY, TMDB_API_KEY.
+ * KV: CACHE (hash-uri permanent, căutări câteva ore, indexul catalogului).
  */
 import { infoHash } from './bencode.js';
+import { FILELIST_API, RO_DUBBED_CATEGORY } from './filelist.js';
+import { KIDS_MANIFEST, catalogFor, parseExtra, refreshIndex } from './catalog.js';
 
-export const FILELIST_API = 'https://filelist.io/api.php';
-export const RO_DUBBED_CATEGORY = 28;
+export { FILELIST_API, RO_DUBBED_CATEGORY };
 
 const SEARCH_TTL_SECONDS = 6 * 3600;
 const MAX_RESULTS = 30;
@@ -203,6 +209,7 @@ export async function handle(request, env) {
     }
 
     const rest = parts.slice(1);
+    if (rest[0] === 'kids') return handleKids(env, rest.slice(1));
     if (rest.length === 1 && rest[0] === 'manifest.json') return json(MANIFEST);
     if (rest.length === 3 && rest[0] === 'stream' && rest[2].endsWith('.json')) {
         try {
@@ -216,6 +223,23 @@ export async function handle(request, env) {
     return notFound();
 }
 
+async function handleKids(env, rest) {
+    if (rest.length === 1 && rest[0] === 'manifest.json') return json(KIDS_MANIFEST);
+    if (rest.length === 1 && rest[0] === 'refresh') {
+        if (!env.TMDB_API_KEY) return json({ error: 'worker-ul nu are TMDB_API_KEY configurat' }, 500);
+        return json(await refreshIndex(env));
+    }
+    if (rest[0] === 'catalog' && (rest.length === 3 || rest.length === 4) && rest[rest.length - 1].endsWith('.json')) {
+        if (!env.TMDB_API_KEY) return json({ error: 'worker-ul nu are TMDB_API_KEY configurat' }, 500);
+        const type = rest[1];
+        const id = rest.length === 3 ? rest[2].slice(0, -5) : rest[2];
+        const { skip } = parseExtra(rest.length === 4 ? rest[3].slice(0, -5) : '');
+        const metas = await catalogFor(env, type, id, skip);
+        return metas ? json({ metas }) : notFound();
+    }
+    return notFound();
+}
+
 export default {
     async fetch(request, env) {
         try {
@@ -224,5 +248,14 @@ export default {
             console.error('[RoDub worker]', e && e.message);
             return json({ error: 'eroare internă' }, 500);
         }
+    },
+
+    // Cron (wrangler.toml → [triggers]): actualizează treptat indexul catalogului dublat.
+    async scheduled(event, env, ctx) {
+        if (!env.CACHE || !env.TMDB_API_KEY || !env.FILELIST_USERNAME || !env.FILELIST_PASSKEY) return;
+        ctx.waitUntil(refreshIndex(env).then(
+            (stats) => console.log('[RoDub worker] index', JSON.stringify(stats)),
+            (e) => console.error('[RoDub worker] index', e && e.message)
+        ));
     },
 };

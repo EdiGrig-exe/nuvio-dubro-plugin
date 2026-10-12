@@ -172,8 +172,28 @@ npm run worker:deploy                                   # afișează https://rod
 
 În Nuvio, la **URL sursă**: `https://rodub-filelist.<cont>.workers.dev/<ACCESS_TOKEN>`.
 
+### Catalog pentru copii (același worker)
+
+Worker-ul expune și un addon de catalog separat, **RoDub Copii**, cu 4 rânduri pentru Home:
+
+| Rând | Sursă |
+|---|---|
+| Filme dublate RO / Seriale dublate RO | titlurile din categoria RO Dubbed de pe FileList, filtrate pe Animation / Family / Kids, cu titlu și poster în română (TMDB), cele mai recent urcate primele |
+| Filme pentru copii | TMDB populare: Animation sau Family, rating US cel mult PG |
+| Seriale pentru copii | TMDB populare: genul Kids, fără știri/reality/telenovele/talk-show |
+
+Addon-ul dă doar cataloage: detaliile și căutarea vin din Cinemeta, stream-urile din RoDub.
+Indexul titlurilor dublate se construiește treptat (cron la 30 de minute, câteva căutări
+FileList pe rundă, pe ani, sezoane și calități) și se ține în KV. Necesită secretul
+`TMDB_API_KEY` în worker (`npx wrangler@4.149.0 secret put TMDB_API_KEY --config worker/wrangler.toml`).
+
+În Nuvio: **Settings → Addons → Add Addon** cu
+`https://rodub-filelist.<cont>.workers.dev/<ACCESS_TOKEN>/kids/manifest.json`, apoi în
+**Settings → Homescreen** ascunzi rândurile Cinemeta (lași addon-ul instalat pentru detalii și
+căutare) și le fixezi pe cele de copii.
+
 **Local:** `npm run worker:dev` pornește worker-ul pe `http://localhost:8787` cu valorile din
-`.env` (`FILELIST_USERNAME`, `FILELIST_PASSKEY`, `WORKER_TOKEN`), iar
+`.env` (`FILELIST_USERNAME`, `FILELIST_PASSKEY`, `WORKER_TOKEN`, `TMDB_API_KEY`), iar
 `SOURCE_URL=http://localhost:8787/<WORKER_TOKEN> node test.js 109445 movie` rulează RoDub
 cap-coadă prin el.
 

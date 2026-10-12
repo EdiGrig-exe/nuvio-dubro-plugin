@@ -1,9 +1,13 @@
 # Cloudflare Worker pentru sursa FileList a RoDub. Deploy: `npm run worker:deploy` (vezi README).
-# Secretele NU stau aici: `npx wrangler secret put ACCESS_TOKEN|FILELIST_USERNAME|FILELIST_PASSKEY`.
+# Secretele NU stau aici: `npx wrangler secret put ACCESS_TOKEN|FILELIST_USERNAME|FILELIST_PASSKEY|TMDB_API_KEY`.
 name = "rodub-filelist"
 main = "src/index.js"
 compatibility_date = "2026-06-01"
 workers_dev = true
+
+# Actualizează indexul catalogului „Filme/Seriale dublate RO" (câte o rundă la 30 de minute).
+[triggers]
+crons = ["*/30 * * * *"]
 
 # Cache pentru hash-uri (permanent) și căutări (6 ore). Worker-ul merge și fără el.
 # Creat cu `npx wrangler kv namespace create CACHE`. Id-ul nu e secret: fără autentificare
