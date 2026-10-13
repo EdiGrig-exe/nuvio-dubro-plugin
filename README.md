@@ -43,6 +43,26 @@ https://edigrig-exe.github.io/nuvio-dubro-plugin/manifest.json
 Fără cele două chei, plugin-ul nu face niciun request și scrie în log
 `[RoDub] lipsește cheia TMDB sau TorBox`.
 
+### Nuvio TV și dispozitive sincronizate: varianta personală
+
+- **Nuvio TV** (aplicația separată pentru Android TV) nu are ecran de setări pentru plugin-uri,
+  deci acolo cheile nu pot fi introduse.
+- **Sincronizarea Nuvio** copiază între dispozitive doar lista de repository-uri, nu și setările
+  plugin-urilor. Pe un dispozitiv sincronizat, RoDub apare, dar fără chei.
+
+Pentru ambele cazuri, worker-ul privat (vezi [Sursa recomandată](#sursa-recomandată-filelist-worker-cloudflare))
+servește o **variantă personală** a plugin-ului: bundle-ul public de pe Pages, cu
+`globalThis.RODUB_DEFAULTS` (cheile TorBox/TMDB din secretele Cloudflare și URL-ul sursei)
+adăugat în față. Setările completate în aplicație au în continuare prioritate.
+
+```
+https://rodub-filelist.<cont>.workers.dev/<ACCESS_TOKEN>/plugin/manifest.json
+```
+
+O instalezi o dată (pe orice dispozitiv; sincronizarea o duce și pe celelalte) și scoți
+repository-ul public, ca să nu apară RoDub de două ori. Necesită secretul `TORBOX_API_KEY`
+în worker. URL-ul conține token-ul: cine îl are poate citi cheile, deci nu-l distribui.
+
 ## Configurare în GitHub (o singură dată)
 
 Repo: <https://github.com/EdiGrig-exe/nuvio-dubro-plugin>

@@ -247,3 +247,19 @@ Base: `https://api.torbox.app/v1/api`, auth `Authorization: Bearer <key>`. Toate
 - Stream-urile completează și `size`, `language: "ro"`, `infoHash`, `seeders` (citite de aplicație).
 - Test local în Node 18+ **și** într-un context `vm` fără timere (după modelul FLAX), ca
   bundle-ul să fie verificat în condițiile reale.
+
+## 9. Aplicațiile curente și diferențele între platforme (verificat 2026-10-13)
+
+- Repo-urile oficiale s-au mutat în organizația **NuvioMedia** (`NuvioMobile`, `NuvioTV`,
+  `NuvioDesktop`, `NuvioTVSmart`). `tapframe/NuvioMobile`, folosit la secțiunile 1–6, e o copie
+  veche (iulie 2026); formatul manifestului și al stream-ului au rămas aceleași.
+- **NuvioMobile actual**: `fetch` e asincron (`asyncFunction`), suportă body binar și
+  `arrayBuffer()`; există `setTimeout`/`setInterval` reale (`__plugin_sleep`, max 60 s);
+  `signal` tot nu e respectat; răspunsurile sunt limitate la 1 MB.
+- **Sincronizarea** (`sync_push_plugins`) trimite doar `url`, `name`, `enabled`, `sortOrder` ale
+  repository-urilor — **setările plugin-urilor nu se sincronizează**.
+- **NuvioTV** are runtime propriu (`core/plugin/PluginRuntime.kt`): expune `SCRAPER_SETTINGS`,
+  dar aplicația **nu are UI pentru setările plugin-urilor** (`setScraperSettings` nu e apelat
+  nicăieri). Acceptă `filename` absolut; face întâi un `HEAD` pentru `Content-Length`.
+- Consecință: pentru TV și dispozitive sincronizate, cheile vin din varianta personală servită de
+  worker (`/<token>/plugin/…`, `globalThis.RODUB_DEFAULTS`), nu din repo-ul public.

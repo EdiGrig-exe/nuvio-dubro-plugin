@@ -15,12 +15,18 @@
  *   GET /<ACCESS_TOKEN>/kids/meta/<type>/<tt…>.json   – metadate (preluate de la Cinemeta)
  *   GET /<ACCESS_TOKEN>/kids/refresh     – o rundă de actualizare a indexului (și din cron)
  *
- * Secrete (wrangler secret put): ACCESS_TOKEN, FILELIST_USERNAME, FILELIST_PASSKEY, TMDB_API_KEY.
+ * Varianta personală a plugin-ului RoDub, cu cheile incluse (vezi personal.js):
+ *   GET /<ACCESS_TOKEN>/plugin/manifest.json
+ *   GET /<ACCESS_TOKEN>/plugin/rodub.js
+ *
+ * Secrete (wrangler secret put): ACCESS_TOKEN, FILELIST_USERNAME, FILELIST_PASSKEY, TMDB_API_KEY,
+ * TORBOX_API_KEY (doar pentru varianta personală a plugin-ului).
  * KV: CACHE (hash-uri permanent, căutări câteva ore, indexul catalogului).
  */
 import { infoHash } from './bencode.js';
 import { FILELIST_API, RO_DUBBED_CATEGORY } from './filelist.js';
 import { KIDS_MANIFEST, catalogFor, metaFor, parseExtra, refreshIndex } from './catalog.js';
+import { personalBundle, personalManifest } from './personal.js';
 
 export { FILELIST_API, RO_DUBBED_CATEGORY };
 
@@ -203,7 +209,8 @@ function toStream(torrent, hash) {
 
 export async function handle(request, env) {
     if (request.method !== 'GET') return json({ error: 'metodă nepermisă' }, 405);
-    const parts = new URL(request.url).pathname.split('/').filter(Boolean);
+    const url = new URL(request.url);
+    const parts = url.pathname.split('/').filter(Boolean);
     if (!env.ACCESS_TOKEN || parts.length < 2 || !safeEqual(parts[0], env.ACCESS_TOKEN)) return notFound();
     if (!env.FILELIST_USERNAME || !env.FILELIST_PASSKEY) {
         return json({ error: 'worker-ul nu are FILELIST_USERNAME/FILELIST_PASSKEY configurate' }, 500);
@@ -211,6 +218,7 @@ export async function handle(request, env) {
 
     const rest = parts.slice(1);
     if (rest[0] === 'kids') return handleKids(env, rest.slice(1));
+    if (rest[0] === 'plugin') return handlePlugin(env, rest.slice(1), `${url.origin}/${parts[0]}`);
     if (rest.length === 1 && rest[0] === 'manifest.json') return json(MANIFEST);
     if (rest.length === 3 && rest[0] === 'stream' && rest[2].endsWith('.json')) {
         try {
@@ -220,6 +228,21 @@ export async function handle(request, env) {
             if (e instanceof UpstreamError) return json({ error: e.message }, 502);
             throw e;
         }
+    }
+    return notFound();
+}
+
+async function handlePlugin(env, rest, workerBase) {
+    if (rest.length !== 1) return notFound();
+    try {
+        if (rest[0] === 'manifest.json') return json(await personalManifest(workerBase));
+        if (rest[0] === 'rodub.js') {
+            return new Response(await personalBundle(env, workerBase), {
+                headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'no-store' },
+            });
+        }
+    } catch (e) {
+        return json({ error: e.message }, 502);
     }
     return notFound();
 }
@@ -248,6 +271,11 @@ async function handleKids(env, rest) {
 export default {
     async fetch(request, env) {
         try {
+            // HEAD (Nuvio TV îl folosește ca să afle mărimea codului) = GET fără corp.
+            if (request.method === 'HEAD') {
+                const res = await handle(new Request(request.url, { method: 'GET', headers: request.headers }), env);
+                return new Response(null, { status: res.status, headers: res.headers });
+            }
             return await handle(request, env);
         } catch (e) {
             console.error('[RoDub worker]', e && e.message);

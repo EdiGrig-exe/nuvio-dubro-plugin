@@ -13,14 +13,22 @@ export const MAX_TORBOX_ADDS = MAX_STREAMS;
 
 export const VIDEO_EXTENSIONS = ['mkv', 'mp4', 'avi'];
 
-function readSetting(name) {
+function readFrom(source, name) {
     try {
-        const settings = typeof globalThis !== 'undefined' ? globalThis.SCRAPER_SETTINGS : null;
-        const value = settings && settings[name];
+        const container = typeof globalThis !== 'undefined' ? globalThis[source] : null;
+        const value = container && container[name];
         return typeof value === 'string' ? value.trim() : '';
     } catch (e) {
         return '';
     }
+}
+
+// 1. setările plugin-ului din aplicație (Nuvio mobil/PC);
+// 2. RODUB_DEFAULTS, injectat de worker-ul privat în varianta personală a plugin-ului —
+//    necesar pe Nuvio TV, care nu are ecran de setări pentru plugin-uri, și pe dispozitivele
+//    sincronizate (sincronizarea Nuvio copiază doar lista de repository-uri, nu și setările).
+function readSetting(name) {
+    return readFrom('SCRAPER_SETTINGS', name) || readFrom('RODUB_DEFAULTS', name);
 }
 
 export function getSettings() {
